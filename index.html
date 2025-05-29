@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>microbitscan</title>
+  <style>
+    /* --- style.css inlined --- */
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      background: #333;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    #container {
+      position: relative;
+      width: 80vw;
+      height: 80vh;
+      overflow: hidden;
+      background: #000;
+      border-radius: 15px;
+      z-index: 0;
+    }
+    video {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      /* object-fit: contain;  Remove or comment out if interfering with zoom fallback */
+      z-index: 1;
+      pointer-events: none;
+    }
+    canvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      object-fit: contain;
+      z-index: 2;
+      pointer-events: none;
+    }
+    #btnConfig {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 10;
+      background: transparent;
+      border: none;
+      font-size: 24px;
+      color: white;
+      cursor: pointer;
+    }
+    dialog {
+      border: 1px solid #ccc;
+      padding: 1em;
+    }
+    #configForm .colorItem {
+      display: flex;
+      align-items: center;
+      margin-bottom: 0.5em;
+    }
+    #configForm input[type="color"] {
+      margin-right: 0.5em;
+    }
+    #configForm input[type="number"] {
+      width: 4em;
+      margin: 0 0.5em;
+    }
+    #configForm .removeColor {
+      margin-left: 0.5em;
+      color: red;
+    }
+    .actions {
+      margin-top: 1em;
+      display: flex;
+      gap: 1em;
+    }
+    /* Start-Dialog */
+    dialog#startDialog::backdrop {
+      background: rgba(0, 0, 0, 0.8);
+    }
+    dialog#startDialog {
+      width: 80vw;
+      max-width: 600px;
+      border: none;
+      border-radius: 8px;
+      padding: 1em;
+      color: #fff;
+      background: #444;
+    }
+    /* Fixiere den Konfig-Dialog direkt neben dem Zahnrad-Button */
+    dialog#configDialog {
+      position: fixed;
+      inset: 10px 50px auto auto;
+      margin: 0;
+      z-index: 1000;
+    }
+    #zoomControl {
+      position: absolute;
+      bottom: 0px;
+      left: 0px;
+      display: flex;
+      gap: 0.5em;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 0.5em;
+      border-radius: 8px;
+      z-index: 30000;
+      align-items: center;
+      pointer-events: auto;
+    }
+
+    #zoomControl input[type="range"] {
+      width: 100px;
+    }
+
+    #zoomControl button {
+      background: #666;
+      color: white;
+      border: none;
+      font-size: 1.2em;
+      width: 2em;
+      height: 2em;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    @media (max-width: 768px) {
+      /* Enlarged controls for small screens */
+      #zoomControl button {
+        width: 8em;
+        height: 8em;
+        font-size: 4.8em;
+      }
+      #toggleCamera,
+      #startOk {
+        font-size: 4em;
+        padding: 1.5em;
+      }
+      #btnConfig {
+        font-size: 96px;
+        width: 96px;
+        height: 96px;
+      }
+      /* Wider slider */
+      #zoomControl input[type="range"] {
+        width: 350px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <dialog id="startDialog">
+    <h2>Scan Toy!</h2>
+    <div style="max-height: 60vh; overflow-y: auto; margin-bottom: 1em;">
+      <p>Sucht nach ausgewählten Farben im Videobild und sendet sie per Bluetooth an einen BBC Micro:Bit und per MIDI. </p>
+      <p>Du mußt Zugriff auf Kamera und MIDI-Gerät gestatten. Um einen BBC Micro:bit zu verwenden, drück' auf den Button "Bluetooth" und wähle ein Gerät aus, auf dem die ScanToy Firmware installiert ist.</p>
+      <p>Die Kamera kann mit dem Zoom-Controller vergrößert werden, um Details besser zu erkennen. </p>
+      <p>Die Farben können im Konfigurationsdialog angepasst werden. </p>
+      <p>Die ScanToy Firmware kann hier heruntergeladen werden: <a href="https://github.com/your-repo/ScanToy/releases/latest">ScanToy Firmware</a></p>
+      <p>Die MIDI-Ausgabe kann aktiviert werden, um die gescannten Werte als MIDI-Noten zu senden.</p>
+      <p>Die Konfiguration wird im Browser gespeichert, so dass sie beim nächsten Besuch automatisch geladen wird.</p>
+      <p> V. 1.0 250529 Max Wolf / MESO Digital Interiors </p>
+    </div>
+    <select id="cameraSelect" style="width:100%; margin-bottom: 1em;"></select>
+    <button id="startOk">Los geht's</button>
+  </dialog>
+  <div id="container">
+    <video id="video" autoplay playsinline></video>
+    <canvas id="overlay"></canvas>
+  </div>
+
+    <div id="zoomControl">
+      <button id="zoomOut">−</button>
+      <input type="range" id="zoomSlider" min="1" step="0.1">
+      <button id="zoomIn">+</button>
+    </div>
+  <button id="btnConfig">⚙️</button>
+
+  <!-- Konfig-Dialog -->
+  <dialog id="configDialog">
+    <h2>Farben konfigurieren</h2>
+    <form id="configForm">
+      <label>Filter-Fenstergröße:
+        <input type="number" id="filterSize" min="1" value="5"> Frames
+      </label>
+      <br>
+      <label><input type="checkbox" id="midiToggle"> MIDI-Ausgabe aktivieren</label>
+      <div id="colorList"></div>
+      <button type="button" id="addColor">+ Farbe hinzufügen</button>
+      <div class="actions">
+        <button type="submit">Speichern</button>
+        <button type="button" id="closeConfig">Abbrechen</button>
+      </div>
+    </form>
+  </dialog>
+
+  <button onclick="connectBluetooth()" style="position:absolute;top:10px;left:10px;z-index:10;">🔗 Bluetooth</button>
+  <button onclick="sendTestP()" style="position:absolute;top:50px;left:10px;z-index:10;">▶ Send "P"</button>
+
+  <script>
+    // --- script.js inlined ---
+    (async () => {
+      // MIDI Output setup
+      let midiOutput = null;
+      if (navigator.requestMIDIAccess) {
+        navigator.requestMIDIAccess().then(access => {
+          const outputs = [...access.outputs.values()];
+          midiOutput = outputs.find(o => o.name && o.name.includes("IAC")) || outputs[0];
+          if (midiOutput) console.log("MIDI-Ausgabe bereit:", midiOutput.name);
+        }).catch(err => console.warn("WebMIDI nicht verfügbar:", err));
+      }
+      const video = document.getElementById('video');
+      const overlay = document.getElementById('overlay');
+      const ctx = overlay.getContext('2d');
+      // Shared zoom state for canvas scanning
+      let supportsHardwareZoom = false;
+      let minZoom = 1;
+      let maxZoom = 1;
+      let currentZoom = 1;
+      const dialog = document.getElementById('configDialog');
+      const btnConfig = document.getElementById('btnConfig');
+      const closeConfig = document.getElementById('closeConfig');
+      const configForm = document.getElementById('configForm');
+      const colorListDiv = document.getElementById('colorList');
+      const addColorBtn = document.getElementById('addColor');
+
+      const startDialog = document.getElementById('startDialog');
+      const startOk = document.getElementById('startOk');
+      const cameraSelect = document.getElementById('cameraSelect');
+
+      let bluetoothDevice = null;
+      let bluetoothCharacteristic = null;
+      let rxChar = null;
+
+
+ // An implementation of Nordic Semicondutor's UART/Serial Port Emulation over Bluetooth low energy
+const UART_SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+
+// Allows the micro:bit to transmit a byte array
+const UART_TX_CHARACTERISTIC_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
+
+// Allows a connected client to send a byte array
+const UART_RX_CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
+
+
+
+
+
+
+
+      async function connectBluetooth() {
+        try {
+          bluetoothDevice = await navigator.bluetooth.requestDevice({      
+            filters: [{ namePrefix: "BBC micro:bit" }],
+            optionalServices: [UART_SERVICE_UUID]
+          });
+          
+          console.log("Device:", bluetoothDevice);
+
+          const server = await bluetoothDevice.gatt.connect();
+          console.log("Getting Service...");
+          const service = await server.getPrimaryService(UART_SERVICE_UUID);
+
+          console.log("Getting Characteristics...");
+          bluetoothCharacteristic = await service.getCharacteristic(
+            UART_TX_CHARACTERISTIC_UUID
+          );
+          
+          console.log("Bluetooth connected and characteristic ready.");
+
+          // RX Characteristic for incoming data
+          rxChar = await service.getCharacteristic(
+            UART_RX_CHARACTERISTIC_UUID
+          );
+          await bluetoothCharacteristic.startNotifications();
+          bluetoothCharacteristic.addEventListener("characteristicvaluechanged", event => {
+            const value = new TextDecoder().decode(event.target.value);
+            console.log("Received from Microbit:", value);
+          });
+        } catch (error) {
+          console.error("Bluetooth connection failed:", error);
+        }
+      }
+
+
+      window.connectBluetooth = connectBluetooth;
+
+      window.sendTestP = function () {
+        if (rxChar) {
+          rxChar.writeValue(new TextEncoder().encode("P\n"));
+          console.log('Sent: P');
+        } else {
+          console.warn("Bluetooth not connected.");
+        }
+      };
+
+      // Kamera-Auswahl Dropdown befüllen
+      navigator.mediaDevices.enumerateDevices().then(devices => {
+        const videoInputs = devices.filter(d => d.kind === 'videoinput');
+        videoInputs.forEach(device => {
+          const option = document.createElement('option');
+          option.value = device.deviceId;
+          option.textContent = device.label || `Kamera ${cameraSelect.length + 1}`;
+          cameraSelect.appendChild(option);
+        });
+      });
+
+      // Öffne Start-Dialog und starte Scan erst nach Klick
+      startDialog.showModal();
+      startOk.addEventListener('click', async () => {
+        startDialog.close();
+        // Zugriff auf Webcam
+        try {
+          const selectedId = cameraSelect.value;
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { deviceId: { exact: selectedId } }
+          });
+          video.srcObject = stream;
+          // Remove any other video elements to prevent layering conflicts
+          document.querySelectorAll('video').forEach((v, i) => {
+            if (v !== video) v.remove();
+          });
+          // --- Camera zoom support ---
+          const [videoTrack] = stream.getVideoTracks();
+          const capabilities = videoTrack.getCapabilities();
+          const settings = videoTrack.getSettings();
+
+          const zoomControl = document.getElementById('zoomControl');
+          const zoomSlider = document.getElementById('zoomSlider');
+          const zoomInBtn = document.getElementById('zoomIn');
+          const zoomOutBtn = document.getElementById('zoomOut');
+
+          // Determine if hardware zoom is supported
+          supportsHardwareZoom = capabilities.zoom && capabilities.zoom.max > capabilities.zoom.min;
+          minZoom = supportsHardwareZoom ? capabilities.zoom.min : 1;
+          maxZoom = supportsHardwareZoom ? capabilities.zoom.max : 3; // fallback max 3x for digital zoom
+          currentZoom = supportsHardwareZoom ? (settings.zoom || minZoom) : minZoom;
+
+          // Initialize slider
+          zoomSlider.min = minZoom;
+          zoomSlider.max = maxZoom;
+          zoomSlider.step = 0.1;
+          zoomSlider.value = currentZoom;
+
+          // Apply zoom (hardware or digital fallback)
+          function applyZoom(newZoom) {
+            newZoom = Math.max(minZoom, Math.min(maxZoom, newZoom));
+            if (supportsHardwareZoom) {
+              videoTrack.applyConstraints({ advanced: [{ zoom: newZoom }] });
+            }
+            // Keep zoom factor for canvas drawing
+            currentZoom = newZoom;
+            zoomSlider.value = newZoom;
+          }
+
+          // Wire up controls
+          zoomInBtn.addEventListener('click', () => applyZoom(currentZoom + 0.1));
+          zoomOutBtn.addEventListener('click', () => applyZoom(currentZoom - 0.1));
+          zoomSlider.addEventListener('input', () => applyZoom(parseFloat(zoomSlider.value)));
+          // --- End camera zoom support ---
+        } catch (e) {
+          alert('Kamera-Zugriff verweigert!');
+          console.error(e);
+          return;
+        }
+        requestAnimationFrame(scanFrame);
+      });
+
+      // Default-Konfiguration
+      let colors = [
+        { id: 1, value: '#ff0000', delta: 10, min: 0, max: 1 },
+        { id: 2, value: '#00ff00', delta: 10, min: 0, max: 1 }
+      ];
+      let filterSize = 5;
+      let filterBuffers = colors.map(() => []);
+      // Load saved configuration from localStorage
+      const savedConfig = localStorage.getItem('microbitscanConfig');
+      if (savedConfig) {
+        try {
+          const config = JSON.parse(savedConfig);
+          if (config.colors) {
+            colors = config.colors;
+            filterBuffers = colors.map(() => []);
+          }
+          if (config.filterSize != null) {
+            filterSize = config.filterSize;
+          }
+          const midiToggleEl = document.getElementById('midiToggle');
+          if (config.midiEnabled != null && midiToggleEl) {
+            midiToggleEl.checked = config.midiEnabled;
+          }
+        } catch (e) {
+          console.warn('Failed to parse saved config:', e);
+        }
+      }
+
+      // Canvas-Größe an Video anpassen
+      function resize() {
+        overlay.width = video.videoWidth;
+        overlay.height = video.videoHeight;
+      }
+      video.addEventListener('loadedmetadata', resize);
+
+      // Array für zuletzt gesendete MIDI-Noten (gehaltene Noten)
+      let lastMidiNotes = [];
+
+      // Scan-Loop
+      function scanFrame() {
+        if (video.readyState !== video.HAVE_ENOUGH_DATA) {
+          requestAnimationFrame(scanFrame);
+          return;
+        }
+        resize();
+        ctx.clearRect(0, 0, overlay.width, overlay.height);
+
+        const w = overlay.width;
+        const h = overlay.height;
+        const x = Math.floor(w / 2);
+
+        // Bilddaten der einen Spalte holen
+        if (supportsHardwareZoom) {
+          ctx.drawImage(video, 0, 0, w, h);
+        } else {
+          const cropWidth = video.videoWidth / currentZoom;
+          const cropHeight = video.videoHeight / currentZoom;
+          const sx = (video.videoWidth - cropWidth) / 2;
+          const sy = (video.videoHeight - cropHeight) / 2;
+          ctx.drawImage(video, sx, sy, cropWidth, cropHeight, 0, 0, w, h);
+        }
+        const imageData = ctx.getImageData(x, 0, 1, h).data;
+
+        // Rohwerte ermitteln (wie zuvor)
+        const rawResults = colors.map(c => {
+          const target = hexToRgb(c.value);
+          const maxDist = (Math.sqrt(3 * 255 * 255) * c.delta) / 100;
+          let best = { dist: Infinity, y: -1 };
+          for (let y = 0; y < h; y++) {
+            const i = y * 4;
+            const r = imageData[i], g = imageData[i+1], b = imageData[i+2];
+            const d = distance([r,g,b], [target.r, target.g, target.b]);
+            if (d < best.dist) best = { dist: d, y };
+          }
+          return best.dist <= maxDist ? best.y : -1;
+        });
+        // Gleitender Durchschnitt über die letzten filterSize Frames
+        const results = rawResults.map((y, idx) => {
+          const buf = filterBuffers[idx];
+          buf.push(y);
+          if (buf.length > filterSize) buf.shift();
+          const valid = buf.filter(v => v >= 0);
+          if (valid.length === 0) return -1;
+          return Math.round(valid.reduce((a,b) => a + b, 0) / valid.length);
+        });
+
+        // Overlay-Zeichnung: Linie + Ticks
+        ctx.beginPath();
+        ctx.strokeStyle = 'yellow';
+        ctx.lineWidth = 2;
+        ctx.rect(x-1, 0, 3, h);
+        ctx.stroke();
+
+        results.forEach((y, idx) => {
+          if (y >= 0) {
+            // Farbkreis am Beginn
+            ctx.beginPath();
+            ctx.fillStyle = colors[idx].value;
+            ctx.arc(x + 1, y, 4, 0, 2 * Math.PI);
+            ctx.fill();
+            // Tick-Markierung in Highlight-Farbe
+            ctx.strokeStyle = 'yellow';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x + 1 + 4, y);
+            ctx.lineTo(x + 11, y);
+            ctx.stroke();
+            // ID- und Y-Koordinaten-Text in Highlight-Farbe
+            const min = colors[idx].min;
+            const max = colors[idx].max;
+            const realY = y * video.videoHeight / overlay.height;
+            const norm = min + (1 - realY / video.videoHeight) * (max - min);
+            ctx.font = '12px sans-serif';
+            ctx.fillStyle = 'yellow';
+            ctx.fillText(`${colors[idx].id} (${Math.round(realY)} → ${norm.toFixed(2)})`, x + 13, y + 4);
+          }
+        });
+
+        // MIDI nachträglich initialisieren falls nötig
+        if (!midiOutput && navigator.requestMIDIAccess) {
+          navigator.requestMIDIAccess().then(access => {
+            const outputs = [...access.outputs.values()];
+            midiOutput = outputs.find(o => o.name && o.name.includes("IAC")) || outputs[0];
+            if (midiOutput) console.log("MIDI nachträglich initialisiert:", midiOutput.name);
+          });
+        }
+
+        // Werte berechnen und MIDI/Bluetooth ausgeben
+        const values = results.map((y, idx) => {
+          if (y < 0) return -1;
+          const realY = y * video.videoHeight / overlay.height;
+          const min = colors[idx].min;
+          const max = colors[idx].max;
+          return (min + (1 - realY / video.videoHeight) * (max - min)).toFixed(2);
+        });
+
+        // MIDI-Ausgabe mit gehaltenen Noten
+        const midiToggle = document.getElementById('midiToggle');
+        if (midiOutput && midiToggle && midiToggle.checked) {
+          values.forEach((v, i) => {
+            if (v >= 0) {
+              const midiNote = 48 + Math.round(v * 36); // 0..1 -> 48–84 (C3–C6)
+              const lastNote = lastMidiNotes[i];
+              if (lastNote === undefined || Math.abs(lastNote - midiNote) >= 1) {
+                if (lastNote !== undefined) {
+                  midiOutput.send([0x80, lastNote, 0]);
+                }
+                console.log(`MIDI senden: Note ${midiNote} (Wert: ${v})`);
+                midiOutput.send([0x90, midiNote, 100]);
+                lastMidiNotes[i] = midiNote;
+              }
+            } else if (lastMidiNotes[i] !== undefined) {
+              midiOutput.send([0x80, lastMidiNotes[i], 0]);
+              lastMidiNotes[i] = undefined;
+            }
+          });
+        }
+
+        // Bluetooth-Ausgabe (nur, wenn verbunden)
+        if (bluetoothCharacteristic && rxChar) {
+          const line = values.join(',') + '\n';
+          const encoder = new TextEncoder();
+          rxChar.writeValue(encoder.encode(line));
+        }
+
+        // Nächsten Frame planen
+        requestAnimationFrame(scanFrame);
+      }
+
+      // Farb-Konvertierung und Distanz
+      function hexToRgb(hex) {
+        const m = hex.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
+        return m ? {
+          r: parseInt(m[1], 16),
+          g: parseInt(m[2], 16),
+          b: parseInt(m[3], 16)
+        } : { r:0, g:0, b:0 };
+      }
+      function distance(a, b) {
+        return Math.hypot(a[0]-b[0], a[1]-b[1], a[2]-b[2]);
+      }
+
+      // Konfig-Dialog
+      btnConfig.addEventListener('click', () => {
+        renderConfig();
+        dialog.showModal();
+      });
+      closeConfig.addEventListener('click', () => dialog.close());
+
+      addColorBtn.addEventListener('click', () => {
+        colors.push({ id: colors.length+1, value: '#ffffff', delta: 15, min: 0, max: 1 });
+        filterBuffers.push([]);
+        renderConfig();
+      });
+
+      configForm.addEventListener('submit', e => {
+        e.preventDefault();
+        // Daten übernehmen
+        const items = colorListDiv.querySelectorAll('.colorItem');
+        colors = Array.from(items).map(item => ({
+          id: item.querySelector('input[name="id"]').value,
+          value: item.querySelector('input[type="color"]').value,
+          delta: Number(item.querySelector('input[name="delta"]').value),
+          min: parseFloat(item.querySelector('input[name="min"]').value) || 0,
+          max: parseFloat(item.querySelector('input[name="max"]').value) || 1
+        }));
+        filterSize = Number(document.getElementById('filterSize').value) || 1;
+        // Save configuration to localStorage
+        localStorage.setItem('microbitscanConfig', JSON.stringify({
+          colors,
+          filterSize,
+          midiEnabled: document.getElementById('midiToggle').checked
+        }));
+        filterBuffers = colors.map(() => []);
+        dialog.close();
+      });
+
+      function renderConfig() {
+        colorListDiv.innerHTML = '';
+        colors.forEach((c, index) => {
+          const div = document.createElement('div');
+          div.className = 'colorItem';
+          div.innerHTML = `
+            <label>ID:</label>
+            <input type="text" name="id" value="${c.id}" placeholder="ID">
+            <input type="color" value="${c.value}">
+            <input type="number" min="0" max="100" name="delta" value="${c.delta}">%
+            <input type="number" step="any" name="min" value="${c.min}" placeholder="Min">
+            <input type="number" step="any" name="max" value="${c.max}" placeholder="Max">
+            <button type="button" class="removeColor">✖</button>
+          `;
+          div.querySelector('.removeColor').onclick = () => {
+            colors.splice(index, 1);
+            renderConfig();
+          };
+          colorListDiv.append(div);
+        });
+      }
+    })();
+  </script>
+</body>
+</html>
