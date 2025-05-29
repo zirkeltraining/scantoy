@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <title>microbitscan</title>
+  <title>MESO ScanToy 1.0</title>
   <style>
     /* --- style.css inlined --- */
     body {
@@ -75,7 +75,7 @@
       display: flex;
       gap: 1em;
     }
-    /* Start-Dialog */
+    /* Start dialog */
     dialog#startDialog::backdrop {
       background: rgba(0, 0, 0, 0.8);
     }
@@ -88,7 +88,7 @@
       color: #fff;
       background: #444;
     }
-    /* Fixiere den Konfig-Dialog direkt neben dem Zahnrad-Button */
+    /* Position the config dialog next to the gear button */
     dialog#configDialog {
       position: fixed;
       inset: 10px 50px auto auto;
@@ -217,6 +217,8 @@
       let minZoom = 1;
       let maxZoom = 1;
       let currentZoom = 1;
+      // Flag to combine all MIDI on channel 0
+      let CombineAllMIDIonChannel0 = true;
       const dialog = document.getElementById('configDialog');
       const btnConfig = document.getElementById('btnConfig');
       const closeConfig = document.getElementById('closeConfig');
@@ -241,12 +243,6 @@ const UART_TX_CHARACTERISTIC_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
 
 // Allows a connected client to send a byte array
 const UART_RX_CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
-
-
-
-
-
-
 
       async function connectBluetooth() {
         try {
@@ -294,14 +290,14 @@ const UART_RX_CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
         }
       };
 
-      // Kamera-Permission anfordern, damit enumerateDevices() alle Label und IDs liefert
+      // Request camera permission so that enumerateDevices() returns all labels and IDs
       try {
         const tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
         tempStream.getTracks().forEach(track => track.stop());
       } catch (err) {
         console.warn('Kamera-Permission verweigert oder nicht verfügbar:', err);
       }
-      // Kamera-Auswahl Dropdown befüllen
+      // Populate camera selection dropdown
       navigator.mediaDevices.enumerateDevices().then(devices => {
         const videoInputs = devices.filter(d => d.kind === 'videoinput');
         videoInputs.forEach(device => {
@@ -312,11 +308,11 @@ const UART_RX_CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
         });
       });
 
-      // Öffne Start-Dialog und starte Scan erst nach Klick
+      // Open start dialog and begin scanning only after click
       startDialog.showModal();
       startOk.addEventListener('click', async () => {
         startDialog.close();
-        // Zugriff auf Webcam
+        // Access webcam
         try {
           const selectedId = cameraSelect.value;
           const stream = await navigator.mediaDevices.getUserMedia({
@@ -373,7 +369,7 @@ const UART_RX_CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
         requestAnimationFrame(scanFrame);
       });
 
-      // Default-Konfiguration
+      // Default configuration
       let colors = [
         { id: 1, value: '#ff0000', delta: 10, min: 0, max: 1 },
         { id: 2, value: '#00ff00', delta: 10, min: 0, max: 1 }
@@ -408,10 +404,10 @@ const UART_RX_CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
       }
       video.addEventListener('loadedmetadata', resize);
 
-      // Array für zuletzt gesendete MIDI-Noten (gehaltene Noten)
+      // Array for last sent MIDI notes (held notes)
       let lastMidiNotes = [];
 
-      // Scan-Loop
+      // Scan loop
       function scanFrame() {
         if (video.readyState !== video.HAVE_ENOUGH_DATA) {
           requestAnimationFrame(scanFrame);
@@ -424,7 +420,7 @@ const UART_RX_CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
         const h = overlay.height;
         const x = Math.floor(w / 2);
 
-        // Bilddaten der einen Spalte holen
+        // Get image data of the center column
         if (supportsHardwareZoom) {
           ctx.drawImage(video, 0, 0, w, h);
         } else {
@@ -436,7 +432,7 @@ const UART_RX_CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
         }
         const imageData = ctx.getImageData(x, 0, 1, h).data;
 
-        // Rohwerte ermitteln (wie zuvor)
+        // Determine raw values (as before)
         const rawResults = colors.map(c => {
           const target = hexToRgb(c.value);
           const maxDist = (Math.sqrt(3 * 255 * 255) * c.delta) / 100;
@@ -449,7 +445,7 @@ const UART_RX_CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
           }
           return best.dist <= maxDist ? best.y : -1;
         });
-        // Gleitender Durchschnitt über die letzten filterSize Frames
+        // Moving average over the last filterSize frames
         const results = rawResults.map((y, idx) => {
           const buf = filterBuffers[idx];
           buf.push(y);
@@ -459,7 +455,7 @@ const UART_RX_CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
           return Math.round(valid.reduce((a,b) => a + b, 0) / valid.length);
         });
 
-        // Overlay-Zeichnung: Linie + Ticks
+        // Overlay drawing: line + ticks
         ctx.beginPath();
         ctx.strokeStyle = 'yellow';
         ctx.lineWidth = 2;
@@ -468,19 +464,19 @@ const UART_RX_CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
 
         results.forEach((y, idx) => {
           if (y >= 0) {
-            // Farbkreis am Beginn
+            // Color circle at position
             ctx.beginPath();
             ctx.fillStyle = colors[idx].value;
             ctx.arc(x + 1, y, 4, 0, 2 * Math.PI);
             ctx.fill();
-            // Tick-Markierung in Highlight-Farbe
+            // Tick mark in highlight color
             ctx.strokeStyle = 'yellow';
             ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.moveTo(x + 1 + 4, y);
             ctx.lineTo(x + 11, y);
             ctx.stroke();
-            // ID- und Y-Koordinaten-Text in Highlight-Farbe
+            // ID and Y-coordinate text in highlight color
             const min = colors[idx].min;
             const max = colors[idx].max;
             const realY = y * video.videoHeight / overlay.height;
@@ -491,7 +487,7 @@ const UART_RX_CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
           }
         });
 
-        // MIDI nachträglich initialisieren falls nötig
+        // Initialize MIDI afterwards if needed
         if (!midiOutput && navigator.requestMIDIAccess) {
           navigator.requestMIDIAccess().then(access => {
             const outputs = [...access.outputs.values()];
@@ -500,7 +496,7 @@ const UART_RX_CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
           });
         }
 
-        // Werte berechnen und MIDI/Bluetooth ausgeben
+        // Calculate values and output via MIDI/Bluetooth
         const values = results.map((y, idx) => {
           if (y < 0) return -1;
           const realY = y * video.videoHeight / overlay.height;
@@ -509,40 +505,67 @@ const UART_RX_CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
           return (min + (1 - realY / video.videoHeight) * (max - min)).toFixed(2);
         });
 
-        // MIDI-Ausgabe mit gehaltenen Noten
+        // MIDI output with held notes
         const midiToggle = document.getElementById('midiToggle');
         if (midiOutput && midiToggle && midiToggle.checked) {
-          values.forEach((v, i) => {
-            if (v >= 0) {
-              const midiNote = 48 + Math.round(v * 36); // 0..1 -> 48–84 (C3–C6)
-              const lastNote = lastMidiNotes[i];
-              if (lastNote === undefined || Math.abs(lastNote - midiNote) >= 1) {
-                if (lastNote !== undefined) {
-                  midiOutput.send([0x80, lastNote, 0]);
+          if (CombineAllMIDIonChannel0) {
+            values.forEach((v, i) => {
+              const noteOnStatus = 0x90;
+              const noteOffStatus = 0x80;
+              if (v >= 0) {
+                const midiNote = 48 + Math.round(v * 36);
+                const lastNote = lastMidiNotes[0];
+                if (lastNote === undefined || Math.abs(lastNote - midiNote) >= 1) {
+                  if (lastNote !== undefined) {
+                    midiOutput.send([noteOffStatus, lastNote, 0]);
+                  }
+                  console.log(`MIDI send: Channel 0, Note ${midiNote} (Value: ${v})`);
+                  midiOutput.send([noteOnStatus, midiNote, 100]);
+                  lastMidiNotes[0] = midiNote;
                 }
-                console.log(`MIDI senden: Note ${midiNote} (Wert: ${v})`);
-                midiOutput.send([0x90, midiNote, 100]);
-                lastMidiNotes[i] = midiNote;
+              } else if (lastMidiNotes[0] !== undefined) {
+                midiOutput.send([noteOffStatus, lastMidiNotes[0], 0]);
+                lastMidiNotes[0] = undefined;
               }
-            } else if (lastMidiNotes[i] !== undefined) {
-              midiOutput.send([0x80, lastMidiNotes[i], 0]);
-              lastMidiNotes[i] = undefined;
-            }
-          });
+            });
+          } else {
+            values.forEach((v, i) => {
+              if (i < 16) {
+                const channel = i + 1;
+                const noteOnStatus = 0x90 + (channel - 1);
+                const noteOffStatus = 0x80 + (channel - 1);
+                if (v >= 0) {
+                  const midiNote = 48 + Math.round(v * 36);
+                  const lastNote = lastMidiNotes[i];
+                  if (lastNote === undefined || Math.abs(lastNote - midiNote) >= 1) {
+                    if (lastNote !== undefined) {
+                      midiOutput.send([noteOffStatus, lastNote, 0]);
+                    }
+                    console.log(`MIDI senden: Kanal ${channel}, Note ${midiNote} (Wert: ${v})`);
+                    midiOutput.send([noteOnStatus, midiNote, 100]);
+                    lastMidiNotes[i] = midiNote;
+                  }
+                } else if (lastMidiNotes[i] !== undefined) {
+                  midiOutput.send([noteOffStatus, lastMidiNotes[i], 0]);
+                  lastMidiNotes[i] = undefined;
+                }
+              }
+            });
+          }
         }
 
-        // Bluetooth-Ausgabe (nur, wenn verbunden)
+        // Bluetooth output (only if connected)
         if (bluetoothCharacteristic && rxChar) {
           const line = values.join(',') + '\n';
           const encoder = new TextEncoder();
           rxChar.writeValue(encoder.encode(line));
         }
 
-        // Nächsten Frame planen
+        // Schedule next frame
         requestAnimationFrame(scanFrame);
       }
 
-      // Farb-Konvertierung und Distanz
+      // Color conversion and distance
       function hexToRgb(hex) {
         const m = hex.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
         return m ? {
