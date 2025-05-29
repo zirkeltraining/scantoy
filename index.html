@@ -294,6 +294,13 @@ const UART_RX_CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
         }
       };
 
+      // Kamera-Permission anfordern, damit enumerateDevices() alle Label und IDs liefert
+      try {
+        const tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        tempStream.getTracks().forEach(track => track.stop());
+      } catch (err) {
+        console.warn('Kamera-Permission verweigert oder nicht verfügbar:', err);
+      }
       // Kamera-Auswahl Dropdown befüllen
       navigator.mediaDevices.enumerateDevices().then(devices => {
         const videoInputs = devices.filter(d => d.kind === 'videoinput');
