@@ -11,7 +11,16 @@
  * if a color is not found within the delta bracket, return -1 for it.
 
 To use, either:
-Run an https:// server with the page or
-Start a local web server and open it as http://localhost
+* go to https://zirkeltraining.github.io/scantoy or
+* Run an https:// server with the page or
+* Start a local web server and open it as http://localhost
 (You'll run into permission issues if you try it any other way)
 
+To use it with a micro:bit:
+* flash the mbFirmware-BTreceiver.js on your micro:bit v2
+* connect it with the "bluetooth" button in the top lef corner
+
+To use it with a MIDI synth:
+* enable the check box "MIDI" in the config
+* run a MIDI synth on the machine that runs the web page. e.g. on a Mac, try GarageBand witha synth track. You may need to route the MIDI signals to your synth, e.g. on a mac via the Audio/MIDI control panel.
+* You can see if MIDI is connected in the developer console of the web page. (F12) 

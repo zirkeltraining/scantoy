@@ -1,6 +1,13 @@
 // bluetooth gateway to radio - test
 // for the bbc microbit v2. probably won't on v1
 
+// what it does: 
+// provides bluetooth connection
+// listens for button A and B presses or Shake and relays them back via BT
+// listens for string "P" and shows a heart icon
+// listens to incoming values and writes them to the servo pins P0-P5
+
+
 bluetooth.onBluetoothConnected(function () {
     basic.showIcon(IconNames.Yes)
 })
