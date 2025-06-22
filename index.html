@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="de">
+
 <head>
   <meta charset="UTF-8">
   <title>MESO ScanToy 1.0</title>
@@ -14,6 +15,7 @@
       align-items: center;
       height: 100vh;
     }
+
     #container {
       position: relative;
       width: 80vw;
@@ -23,22 +25,29 @@
       border-radius: 15px;
       z-index: 0;
     }
+
     video {
       position: absolute;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
       /* object-fit: contain;  Remove or comment out if interfering with zoom fallback */
       z-index: 1;
       pointer-events: none;
     }
+
     canvas {
       position: absolute;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
       object-fit: contain;
       z-index: 2;
       pointer-events: none;
     }
+
     #btnConfig {
       position: absolute;
       top: 10px;
@@ -50,35 +59,43 @@
       color: white;
       cursor: pointer;
     }
+
     dialog {
       border: 1px solid #ccc;
       padding: 1em;
     }
+
     #configForm .colorItem {
       display: flex;
       align-items: center;
       margin-bottom: 0.5em;
     }
+
     #configForm input[type="color"] {
       margin-right: 0.5em;
     }
+
     #configForm input[type="number"] {
       width: 4em;
       margin: 0 0.5em;
     }
+
     #configForm .removeColor {
       margin-left: 0.5em;
       color: red;
     }
+
     .actions {
       margin-top: 1em;
       display: flex;
       gap: 1em;
     }
+
     /* Start dialog */
     dialog#startDialog::backdrop {
       background: rgba(0, 0, 0, 0.8);
     }
+
     dialog#startDialog {
       width: 80vw;
       max-width: 600px;
@@ -88,6 +105,7 @@
       color: #fff;
       background: #444;
     }
+
     /* Position the config dialog next to the gear button */
     dialog#configDialog {
       position: fixed;
@@ -95,6 +113,7 @@
       margin: 0;
       z-index: 1000;
     }
+
     #zoomControl {
       position: absolute;
       bottom: 0px;
@@ -125,22 +144,26 @@
     }
 
     @media (max-width: 768px) {
+
       /* Enlarged controls for small screens */
       #zoomControl button {
         width: 8em;
         height: 8em;
         font-size: 4.8em;
       }
+
       #toggleCamera,
       #startOk {
         font-size: 4em;
         padding: 1.5em;
       }
+
       #btnConfig {
         font-size: 96px;
         width: 96px;
         height: 96px;
       }
+
       /* Wider slider */
       #zoomControl input[type="range"] {
         width: 350px;
@@ -148,15 +171,19 @@
     }
   </style>
 </head>
+
 <body>
   <dialog id="startDialog">
     <h2>Scan Toy!</h2>
     <div style="max-height: 60vh; overflow-y: auto; margin-bottom: 1em;">
-      <p>Sucht nach ausgewählten Farben im Videobild und sendet sie per Bluetooth an einen BBC Micro:Bit und per MIDI. </p>
-      <p>Du mußt Zugriff auf Kamera und MIDI-Gerät gestatten. Um einen BBC Micro:bit zu verwenden, drück' auf den Button "Bluetooth" und wähle ein Gerät aus, auf dem die ScanToy Firmware installiert ist.</p>
+      <p>Sucht nach ausgewählten Farben im Videobild und sendet sie per Bluetooth an einen BBC Micro:Bit und per MIDI.
+      </p>
+      <p>Du mußt Zugriff auf Kamera und MIDI-Gerät gestatten. Um einen BBC Micro:bit zu verwenden, drück' auf den Button
+        "Bluetooth" und wähle ein Gerät aus, auf dem die ScanToy Firmware installiert ist.</p>
       <p>Die Kamera kann mit dem Zoom-Controller vergrößert werden, um Details besser zu erkennen. </p>
       <p>Die Farben können im Konfigurationsdialog angepasst werden. </p>
-      <p>Die ScanToy Firmware kann hier heruntergeladen werden: <a href="https://github.com/your-repo/ScanToy/releases/latest">ScanToy Firmware</a></p>
+      <p>Die ScanToy Firmware kann hier heruntergeladen werden: <a
+          href="https://github.com/your-repo/ScanToy/releases/latest">ScanToy Firmware</a></p>
       <p>Die MIDI-Ausgabe kann aktiviert werden, um die gescannten Werte als MIDI-Noten zu senden.</p>
       <p>Die Konfiguration wird im Browser gespeichert, so dass sie beim nächsten Besuch automatisch geladen wird.</p>
       <p> V. 1.0 250529 Max Wolf / MESO Digital Interiors </p>
@@ -169,11 +196,11 @@
     <canvas id="overlay"></canvas>
   </div>
 
-    <div id="zoomControl">
-      <button id="zoomOut">−</button>
-      <input type="range" id="zoomSlider" min="1" step="0.1">
-      <button id="zoomIn">+</button>
-    </div>
+  <div id="zoomControl">
+    <button id="zoomOut">−</button>
+    <input type="range" id="zoomSlider" min="1" step="0.1">
+    <button id="zoomIn">+</button>
+  </div>
   <button id="btnConfig">⚙️</button>
 
   <!-- Konfig-Dialog -->
@@ -185,6 +212,7 @@
       </label>
       <br>
       <label><input type="checkbox" id="midiToggle"> MIDI-Ausgabe aktivieren</label>
+      <label><input type="checkbox" id="soundToggle"> MIDI-Töne über Lautsprecher abspielen</label>
       <div id="colorList"></div>
       <button type="button" id="addColor">+ Farbe hinzufügen</button>
       <div class="actions">
@@ -209,6 +237,7 @@
           if (midiOutput) console.log("MIDI-Ausgabe bereit:", midiOutput.name);
         }).catch(err => console.warn("WebMIDI nicht verfügbar:", err));
       }
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       const video = document.getElementById('video');
       const overlay = document.getElementById('overlay');
       const ctx = overlay.getContext('2d');
@@ -219,6 +248,7 @@
       let currentZoom = 1;
       // Flag to combine all MIDI on channel 0
       let CombineAllMIDIonChannel0 = true;
+      let useSoundOutput = false;
       const dialog = document.getElementById('configDialog');
       const btnConfig = document.getElementById('btnConfig');
       const closeConfig = document.getElementById('closeConfig');
@@ -235,22 +265,22 @@
       let rxChar = null;
 
 
- // An implementation of Nordic Semicondutor's UART/Serial Port Emulation over Bluetooth low energy
-const UART_SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+      // An implementation of Nordic Semicondutor's UART/Serial Port Emulation over Bluetooth low energy
+      const UART_SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
 
-// Allows the micro:bit to transmit a byte array
-const UART_TX_CHARACTERISTIC_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
+      // Allows the micro:bit to transmit a byte array
+      const UART_TX_CHARACTERISTIC_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
 
-// Allows a connected client to send a byte array
-const UART_RX_CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
+      // Allows a connected client to send a byte array
+      const UART_RX_CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
 
       async function connectBluetooth() {
         try {
-          bluetoothDevice = await navigator.bluetooth.requestDevice({      
+          bluetoothDevice = await navigator.bluetooth.requestDevice({
             filters: [{ namePrefix: "BBC micro:bit" }],
             optionalServices: [UART_SERVICE_UUID]
           });
-          
+
           console.log("Device:", bluetoothDevice);
 
           const server = await bluetoothDevice.gatt.connect();
@@ -261,7 +291,7 @@ const UART_RX_CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
           bluetoothCharacteristic = await service.getCharacteristic(
             UART_TX_CHARACTERISTIC_UUID
           );
-          
+
           console.log("Bluetooth connected and characteristic ready.");
 
           // RX Characteristic for incoming data
@@ -392,6 +422,10 @@ const UART_RX_CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
           if (config.midiEnabled != null && midiToggleEl) {
             midiToggleEl.checked = config.midiEnabled;
           }
+          if (config.soundEnabled != null && document.getElementById('soundToggle')) {
+            document.getElementById('soundToggle').checked = config.soundEnabled;
+            useSoundOutput = config.soundEnabled;
+          }
         } catch (e) {
           console.warn('Failed to parse saved config:', e);
         }
@@ -406,7 +440,18 @@ const UART_RX_CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
 
       // Array for last sent MIDI notes (held notes)
       let lastMidiNotes = [];
-
+      // Sound output function
+      function playMIDINote(freq, duration = 0.2) {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "square";
+        osc.frequency.value = freq;
+        gain.gain.value = 0.1;
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      }
       // Scan loop
       function scanFrame() {
         if (video.readyState !== video.HAVE_ENOUGH_DATA) {
@@ -439,8 +484,8 @@ const UART_RX_CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
           let best = { dist: Infinity, y: -1 };
           for (let y = 0; y < h; y++) {
             const i = y * 4;
-            const r = imageData[i], g = imageData[i+1], b = imageData[i+2];
-            const d = distance([r,g,b], [target.r, target.g, target.b]);
+            const r = imageData[i], g = imageData[i + 1], b = imageData[i + 2];
+            const d = distance([r, g, b], [target.r, target.g, target.b]);
             if (d < best.dist) best = { dist: d, y };
           }
           return best.dist <= maxDist ? best.y : -1;
@@ -452,14 +497,14 @@ const UART_RX_CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
           if (buf.length > filterSize) buf.shift();
           const valid = buf.filter(v => v >= 0);
           if (valid.length === 0) return -1;
-          return Math.round(valid.reduce((a,b) => a + b, 0) / valid.length);
+          return Math.round(valid.reduce((a, b) => a + b, 0) / valid.length);
         });
 
         // Overlay drawing: line + ticks
         ctx.beginPath();
         ctx.strokeStyle = 'yellow';
         ctx.lineWidth = 2;
-        ctx.rect(x-1, 0, 3, h);
+        ctx.rect(x - 1, 0, 3, h);
         ctx.stroke();
 
         results.forEach((y, idx) => {
@@ -521,6 +566,7 @@ const UART_RX_CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
                   }
                   console.log(`MIDI send: Channel 0, Note ${midiNote} (Value: ${v})`);
                   midiOutput.send([noteOnStatus, midiNote, 100]);
+                  if (useSoundOutput) playMIDINote(440 * Math.pow(2, (midiNote - 69) / 12));
                   lastMidiNotes[0] = midiNote;
                 }
               } else if (lastMidiNotes[0] !== undefined) {
@@ -572,10 +618,10 @@ const UART_RX_CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
           r: parseInt(m[1], 16),
           g: parseInt(m[2], 16),
           b: parseInt(m[3], 16)
-        } : { r:0, g:0, b:0 };
+        } : { r: 0, g: 0, b: 0 };
       }
       function distance(a, b) {
-        return Math.hypot(a[0]-b[0], a[1]-b[1], a[2]-b[2]);
+        return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
       }
 
       // Konfig-Dialog
@@ -586,7 +632,7 @@ const UART_RX_CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
       closeConfig.addEventListener('click', () => dialog.close());
 
       addColorBtn.addEventListener('click', () => {
-        colors.push({ id: colors.length+1, value: '#ffffff', delta: 15, min: 0, max: 1 });
+        colors.push({ id: colors.length + 1, value: '#ffffff', delta: 15, min: 0, max: 1 });
         filterBuffers.push([]);
         renderConfig();
       });
@@ -607,8 +653,10 @@ const UART_RX_CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
         localStorage.setItem('microbitscanConfig', JSON.stringify({
           colors,
           filterSize,
-          midiEnabled: document.getElementById('midiToggle').checked
+          midiEnabled: document.getElementById('midiToggle').checked,
+          soundEnabled: document.getElementById('soundToggle').checked
         }));
+        useSoundOutput = document.getElementById('soundToggle').checked;
         filterBuffers = colors.map(() => []);
         dialog.close();
       });
@@ -637,4 +685,5 @@ const UART_RX_CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
     })();
   </script>
 </body>
+
 </html>
