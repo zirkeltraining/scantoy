@@ -1,5 +1,13 @@
 # microbitscan
 
+Consists of different interactions:
+
+## mbFirmware-analogrecorder.js
+a firmware to connect 3 servos, a solenoid, a joystick, a few buttons and a fader to a microbit, then sample the input and play it back.
+
+
+## index.html + mbFirmware-BTReceiver.js
+
  a simple webpage that
  * displays the webcam in a large window
  * continuously scans one vertical line of pixels in the center of the video 
@@ -18,7 +26,7 @@ To use, either:
 
 To use it with a micro:bit:
 * flash the mbFirmware-BTreceiver.js on your micro:bit v2
-* connect it with the "bluetooth" button in the top lef corner
+* connect it with the "bluetooth" button in the top left corner
 
 To use it with a MIDI synth:
 * enable the check box "MIDI" in the config
@@ -27,10 +35,9 @@ To use it with a MIDI synth:
 
 Still to do:
 * UI  on mobile devices is hard to use, not responsive enough
-* firmware to forward the values over the microbit radio (from a second microbit tethered to the first)
+* Android Chrome has no colot picker, need replacement for that.
+* firmware to forward the values over the microbit radio (from a second microbit tethered to the first) (optional)
 * universal receiver firmware for a third microbit to receive via radio and filter for a specific ID
-
-
 
 
 Simple setup:
