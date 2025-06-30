@@ -1,3 +1,6 @@
+const SERVO_MIN = 500
+const SERVO_MAX = 2500
+
 let isSampling = false
 let samples: number[][] = []
 let MAX_SAMPLE_COUNT = 10000
@@ -5,7 +8,7 @@ let isReplaying = false
 let sampleIndex = 0
 
 function normalizeToHeight(value: number): number {
-    return Math.map(value, 0, 1023, 0, 5)
+    return Math.map(value + (1023 / 10), 0, 1023, 0, 5)
 }
 
 function showBars(values: number[]) {
@@ -21,18 +24,25 @@ function showBars(values: number[]) {
 }
 
 basic.showIcon(IconNames.TShirt)
-
+pins.setPull(DigitalPin.P6, PinPullMode.PullUp)
+pins.setPull(DigitalPin.P7, PinPullMode.PullUp)
+pins.setPull(DigitalPin.P8, PinPullMode.PullUp)
+pins.setPull(DigitalPin.P9, PinPullMode.PullUp)
+pins.setPull(DigitalPin.P6, PinPullMode.PullUp)
 input.onButtonPressed(Button.A, function () {
-    basic.showIcon(IconNames.SmallDiamond)
-    music.playTone(Note.C, music.beat(BeatFraction.Sixteenth))
-    music.playTone(Note.E, music.beat(BeatFraction.Sixteenth))
+
 
     isSampling = !isSampling
     if (isSampling) {
         samples = []
         basic.showIcon(IconNames.SmallDiamond)
+        music.playTone(Note.C, music.beat(BeatFraction.Half))
+        music.playTone(Note.E, music.beat(BeatFraction.Quarter))
     } else {
         basic.showIcon(IconNames.SmallSquare)
+        music.playTone(Note.E, music.beat(BeatFraction.Quarter))
+        music.playTone(Note.C, music.beat(BeatFraction.Half))
+
     }
 })
 
@@ -65,12 +75,14 @@ basic.forever(function () {
             sampleIndex = 0
         }
     } else {
-        current = [
-            pins.analogReadPin(AnalogPin.P0),
-            pins.analogReadPin(AnalogPin.P1),
-            pins.analogReadPin(AnalogPin.P2),
-            pins.digitalReadPin(DigitalPin.P8) * 1023
-        ]
+        let a0 = pins.analogReadPin(AnalogPin.P0)
+        basic.pause(1)
+        let a1 = pins.analogReadPin(AnalogPin.P1)
+        basic.pause(1)
+        let a2 = pins.analogReadPin(AnalogPin.P2)
+        basic.pause(1)
+        let d3 = pins.digitalReadPin(DigitalPin.P6) * 5
+        current = [a0, a1, a2, d3]
 
         if (isSampling && samples.length < MAX_SAMPLE_COUNT) {
             samples.push(current)
@@ -78,6 +90,14 @@ basic.forever(function () {
     }
 
     showBars(current)
+
+    if (isReplaying) {
+        pins.servoSetPulse(AnalogPin.P3, Math.map(current[0], 0, 1023, SERVO_MIN, SERVO_MAX))
+        pins.servoSetPulse(AnalogPin.P4, Math.map(current[1], 0, 1023, SERVO_MIN, SERVO_MAX))
+        pins.servoSetPulse(AnalogPin.P10, Math.map(current[2], 0, 1023, SERVO_MIN, SERVO_MAX))
+        pins.digitalWritePin(DigitalPin.P16, current[3] > 0 ? 1 : 0)
+    }
+
     serial.writeLine((isReplaying ? "PLAY: " : isSampling ? "REC: " : "Live: ") + current.join(", "))
     basic.pause(100)
 })
