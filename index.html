@@ -4,172 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <title>MESO ScanToy 1.0</title>
-  <style>
-    /* --- style.css inlined --- */
-    body {
-      margin: 0;
-      font-family: sans-serif;
-      background: #333;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
-
-    #container {
-      position: relative;
-      width: 80vw;
-      height: 80vh;
-      overflow: hidden;
-      background: #000;
-      border-radius: 15px;
-      z-index: 0;
-    }
-
-    video {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      /* object-fit: contain;  Remove or comment out if interfering with zoom fallback */
-      z-index: 1;
-      pointer-events: none;
-    }
-
-    canvas {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      z-index: 2;
-      pointer-events: none;
-    }
-
-    #btnConfig {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      z-index: 10;
-      background: transparent;
-      border: none;
-      font-size: 24px;
-      color: white;
-      cursor: pointer;
-    }
-
-    dialog {
-      border: 1px solid #ccc;
-      padding: 1em;
-    }
-
-    #configForm .colorItem {
-      display: flex;
-      align-items: center;
-      margin-bottom: 0.5em;
-    }
-
-    #configForm input[type="color"] {
-      margin-right: 0.5em;
-    }
-
-    #configForm input[type="number"] {
-      width: 4em;
-      margin: 0 0.5em;
-    }
-
-    #configForm .removeColor {
-      margin-left: 0.5em;
-      color: red;
-    }
-
-    .actions {
-      margin-top: 1em;
-      display: flex;
-      gap: 1em;
-    }
-
-    /* Start dialog */
-    dialog#startDialog::backdrop {
-      background: rgba(0, 0, 0, 0.8);
-    }
-
-    dialog#startDialog {
-      width: 80vw;
-      max-width: 600px;
-      border: none;
-      border-radius: 8px;
-      padding: 1em;
-      color: #fff;
-      background: #444;
-    }
-
-    /* Position the config dialog next to the gear button */
-    dialog#configDialog {
-      position: fixed;
-      inset: 10px 50px auto auto;
-      margin: 0;
-      z-index: 1000;
-    }
-
-    #zoomControl {
-      position: absolute;
-      bottom: 0px;
-      left: 0px;
-      display: flex;
-      gap: 0.5em;
-      background: rgba(0, 0, 0, 0.5);
-      padding: 0.5em;
-      border-radius: 8px;
-      z-index: 30000;
-      align-items: center;
-      pointer-events: auto;
-    }
-
-    #zoomControl input[type="range"] {
-      width: 100px;
-    }
-
-    #zoomControl button {
-      background: #666;
-      color: white;
-      border: none;
-      font-size: 1.2em;
-      width: 2em;
-      height: 2em;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-
-    @media (max-width: 768px) {
-
-      /* Enlarged controls for small screens */
-      #zoomControl button {
-        width: 8em;
-        height: 8em;
-        font-size: 4.8em;
-      }
-
-      #toggleCamera,
-      #startOk {
-        font-size: 4em;
-        padding: 1.5em;
-      }
-
-      #btnConfig {
-        font-size: 96px;
-        width: 96px;
-        height: 96px;
-      }
-
-      /* Wider slider */
-      #zoomControl input[type="range"] {
-        width: 350px;
-      }
-    }
-  </style>
+  <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
@@ -226,6 +61,7 @@
   <button onclick="sendTestP()" style="position:absolute;top:50px;left:10px;z-index:10;">▶ Send "P"</button>
 
   <script>
+    let isPickingColor = false;
     // --- script.js inlined ---
     (async () => {
       // MIDI Output setup
@@ -437,7 +273,22 @@
         overlay.height = video.videoHeight;
       }
       video.addEventListener('loadedmetadata', resize);
-
+      overlay.addEventListener('click', (e) => {
+        if (isPickingColor !== false) {
+          const rect = overlay.getBoundingClientRect();
+          const scaleX = overlay.width / rect.width;
+          const scaleY = overlay.height / rect.height;
+          const offsetX = -5, offsetY = -5;
+          const x = Math.max(0, Math.round((e.clientX - rect.left) * scaleX) + offsetX);
+          const y = Math.max(0, Math.round((e.clientY - rect.top) * scaleY) + offsetY);
+console.log("Click auf Overlay erkannt!", { x, y });
+          const data = ctx.getImageData(x, y, 1, 1).data;
+          const hex = '#' + [...data].slice(0, 3).map(v => v.toString(16).padStart(2, '0')).join('');
+          colors[isPickingColor.index].value = hex;
+          isPickingColor = false;
+          renderConfig();
+        }
+      });
       // Array for last sent MIDI notes (held notes)
       let lastMidiNotes = [];
       // Sound output function
@@ -669,7 +520,10 @@
           div.innerHTML = `
             <label>ID:</label>
             <input type="text" name="id" value="${c.id}" placeholder="ID">
-            <input type="color" value="${c.value}">
+<input type="color" value="${c.value}">
+<button type="button" class="pickColor">🎯</button>
+<span class="colorPreview" style="display:inline-block;width:20px;height:20px;border:1px solid #999;margin-left:4px;background:${c.value};"></span>
+
             <input type="number" min="0" max="100" name="delta" value="${c.delta}">%
             <input type="number" step="any" name="min" value="${c.min}" placeholder="Min">
             <input type="number" step="any" name="max" value="${c.max}" placeholder="Max">
@@ -679,6 +533,11 @@
             colors.splice(index, 1);
             renderConfig();
           };
+div.querySelector('.pickColor').onclick = () => {
+  isPickingColor = { index };
+  dialog.close();
+  setTimeout(() => alert("Tippe auf das Video, um eine Farbe auszuwählen."), 100);
+};
           colorListDiv.append(div);
         });
       }
