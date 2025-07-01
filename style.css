@@ -177,4 +177,48 @@ canvas#overlay {
     canvas:active {
   cursor: crosshair;
 }
+#loupe {
+  position: absolute;
+  width: 100px;
+  height: 100px;
+  border: 2px solid yellow;
+  border-radius: 50%;
+  overflow: hidden;
+  pointer-events: auto;
+  display: none;
+  z-index: 10;
+  background: black;
+}
+
+#loupe canvas {
+  width: 200px;
+  height: 200px;
+  transform: scale(0.5);
+    pointer-events: none;
+
+  transform-origin: top left;
+}
+
+#loupe::before,
+#loupe::after {
+  content: '';
+  position: absolute;
+  background: red;
+}
+
+#loupe::before {
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  transform: translateY(-1px);
+}
+
+#loupe::after {
+  top: 0;
+  left: 50%;
+  width: 2px;
+  height: 100%;
+  transform: translateX(-1px);
+}
   </style>

@@ -29,6 +29,7 @@
   <div id="container">
     <video id="video" autoplay playsinline></video>
     <canvas id="overlay"></canvas>
+    <div id="loupe"><canvas></canvas></div>
   </div>
 
   <div id="zoomControl">
@@ -62,6 +63,9 @@
 
   <script>
     let isPickingColor = false;
+    let isDraggingLoupe = false;
+    let dragOffsetX = 0;
+    let dragOffsetY = 0;
     // --- script.js inlined ---
     (async () => {
       // MIDI Output setup
@@ -77,6 +81,9 @@
       const video = document.getElementById('video');
       const overlay = document.getElementById('overlay');
       const ctx = overlay.getContext('2d');
+      const loupe = document.getElementById('loupe');
+      const loupeCanvas = loupe.querySelector('canvas');
+      const loupeCtx = loupeCanvas.getContext('2d');
       // Shared zoom state for canvas scanning
       let supportsHardwareZoom = false;
       let minZoom = 1;
@@ -281,13 +288,51 @@
           const offsetX = -5, offsetY = -5;
           const x = Math.max(0, Math.round((e.clientX - rect.left) * scaleX) + offsetX);
           const y = Math.max(0, Math.round((e.clientY - rect.top) * scaleY) + offsetY);
-console.log("Click auf Overlay erkannt!", { x, y });
+          console.log("Click auf Overlay erkannt!", { x, y });
           const data = ctx.getImageData(x, y, 1, 1).data;
           const hex = '#' + [...data].slice(0, 3).map(v => v.toString(16).padStart(2, '0')).join('');
           colors[isPickingColor.index].value = hex;
           isPickingColor = false;
           renderConfig();
+          loupe.style.display = 'none';
         }
+      });
+      overlay.addEventListener('mousemove', (e) => {
+        if (!isPickingColor) return;
+        const rect = overlay.getBoundingClientRect();
+        const scaleX = overlay.width / rect.width;
+        const scaleY = overlay.height / rect.height;
+
+        const x = Math.max(0, Math.round((e.clientX - rect.left) * scaleX));
+        const y = Math.max(0, Math.round((e.clientY - rect.top) * scaleY));
+
+        // Zoom-Vorschau aktualisieren
+        loupeCanvas.width = 100;
+        loupeCanvas.height = 100;
+        loupeCtx.clearRect(0, 0, 100, 100);
+        loupeCtx.drawImage(
+          overlay,
+          x - 25, y - 25, 50, 50, // Quelle
+          0, 0, 100, 100          // Ziel
+        );
+      });
+
+      loupe.addEventListener('mousedown', (e) => {
+        isDraggingLoupe = true;
+        dragOffsetX = e.clientX - loupe.offsetLeft;
+        dragOffsetY = e.clientY - loupe.offsetTop;
+        e.preventDefault();
+      });
+
+      document.addEventListener('mousemove', (e) => {
+        if (isDraggingLoupe) {
+          loupe.style.left = `${e.clientX - dragOffsetX}px`;
+          loupe.style.top = `${e.clientY - dragOffsetY}px`;
+        }
+      });
+
+      document.addEventListener('mouseup', () => {
+        isDraggingLoupe = false;
       });
       // Array for last sent MIDI notes (held notes)
       let lastMidiNotes = [];
@@ -520,10 +565,8 @@ console.log("Click auf Overlay erkannt!", { x, y });
           div.innerHTML = `
             <label>ID:</label>
             <input type="text" name="id" value="${c.id}" placeholder="ID">
-<input type="color" value="${c.value}">
-<button type="button" class="pickColor">🎯</button>
-<span class="colorPreview" style="display:inline-block;width:20px;height:20px;border:1px solid #999;margin-left:4px;background:${c.value};"></span>
-
+            <input type="color" value="${c.value}">
+            <button type="button" class="pickColor">🎯</button>
             <input type="number" min="0" max="100" name="delta" value="${c.delta}">%
             <input type="number" step="any" name="min" value="${c.min}" placeholder="Min">
             <input type="number" step="any" name="max" value="${c.max}" placeholder="Max">
@@ -533,11 +576,29 @@ console.log("Click auf Overlay erkannt!", { x, y });
             colors.splice(index, 1);
             renderConfig();
           };
-div.querySelector('.pickColor').onclick = () => {
-  isPickingColor = { index };
-  dialog.close();
-  setTimeout(() => alert("Tippe auf das Video, um eine Farbe auszuwählen."), 100);
-};
+          div.querySelector('.pickColor').onclick = () => {
+            isPickingColor = { index };
+            dialog.close();
+            loupe.style.display = 'block';
+            loupe.style.left = '50%';
+            loupe.style.top = '50%';
+           };
+          div.querySelector('input[type="color"]').onchange = (e) => {
+            c.value = e.target.value;
+            div.querySelector('.colorPreview').style.backgroundColor = c.value;
+          };
+          div.querySelector('input[name="id"]').onchange = (e) => {
+            c.id = e.target.value;
+          };
+          div.querySelector('input[name="delta"]').onchange = (e) => {
+            c.delta = Number(e.target.value);
+          };
+          div.querySelector('input[name="min"]').onchange = (e) => {
+            c.min = parseFloat(e.target.value) || 0;
+          };
+          div.querySelector('input[name="max"]').onchange = (e) => {
+            c.max = parseFloat(e.target.value) || 1;
+          };
           colorListDiv.append(div);
         });
       }
