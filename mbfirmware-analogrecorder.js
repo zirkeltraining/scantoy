@@ -81,7 +81,7 @@ basic.forever(function () {
         basic.pause(1)
         let a2 = pins.analogReadPin(AnalogPin.P2)
         basic.pause(1)
-        let d3 = pins.digitalReadPin(DigitalPin.P6) * 5
+        let d3 = pins.digitalReadPin(DigitalPin.P8) * 1023
         current = [a0, a1, a2, d3]
 
         if (isSampling && samples.length < MAX_SAMPLE_COUNT) {
