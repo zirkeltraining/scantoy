@@ -1,5 +1,25 @@
+/* 
+
+Micro:bit Analog Recorder Firmware
+========================
+
+
+Fader an P0 (linker Pin des Faders an +, rechter pin -, mittlerer Pin an"S"
+Joystick X (“VRX”) an P1 + Y (“VRY”) an  P2 (und jeweils GND an - und +5v an + auf der rechten Pin-Bank!)
+Joystick-Taster (“SW”=Switch) an P8
+Record-Button an P5 und GND (ist parallel zu Button “A” auf dem Motherboard zu nutzen)
+Play-Button an P11 und GND (ist parallel zu Button “B” auf dem Motherboard zu nutzen)
+Servoausgänge - gehen auf:
+Schnabel au/zu-Servo an P3 (Wert von P0), an GND und +5V
+Schwenken-Servo an P4 (Wert von P1), an GND und +5V
+Nicken-Servo an P10 (Wert von P2), an GND und +5V
+Picken: Digital-output an P16, ggfs. mit einem 3v3-toleranten Relais an den Hubmagnet anzuschließen (oder 3v3-Hubmagnet nutzen)
+
+ */
+
 const SERVO_MIN = 500
 const SERVO_MAX = 2500
+const SAMPLE_FREQUENCY = 0.05 // in seconds
 
 let isSampling = false
 let samples: number[][] = []
@@ -125,5 +145,5 @@ basic.forever(function () {
     }
 
     serial.writeLine((isReplaying ? "PLAY: " : isSampling ? "REC: " : "Live: ") + current.join(", "))
-    basic.pause(100)
+    basic.pause(SAMPLE_FREQUENCY*1000) // Adjust sample frequency as needed
 })
