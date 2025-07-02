@@ -52,3 +52,10 @@ uses 1 mobile and 3 to _many_ microbits. (not clear how many are supported, prob
 * microbit 1 is the bluetooth receiver. The webpage connects to it and the microbit sends the received bluetooth string via serial cable (TX/RX lines) to microbit 2
 * microbit 2 is the radio relay. it forwards the data from microbit 1 over the microbit radio
 * microbits 3 to n receive the data over the microbit radio and immediately drive relays connected to them. 
+
+
+Troubleshooting:
+* servos move slowly, sometimes servos seem to not react or react too early: 
+  * check if the power supply is sufficient
+* "Ghost moves" - Inputs seem to move even though you didn't touch them (or touched another one)
+  * make sure that all inputs are connected. if one is left out, that value can be undefined or "floating".
