@@ -5,10 +5,10 @@ Micro:bit Analog Recorder Firmware
 
 
 Fader an P0 (linker Pin des Faders an +, rechter pin -, mittlerer Pin an"S"
-Joystick X (“VRX”) an P1 + Y (“VRY”) an  P2 (und jeweils GND an - und +5v an + auf der rechten Pin-Bank!)
-Joystick-Taster (“SW”=Switch) an P8
-Record-Button an P5 und GND (ist parallel zu Button “A” auf dem Motherboard zu nutzen)
-Play-Button an P11 und GND (ist parallel zu Button “B” auf dem Motherboard zu nutzen)
+Joystick X ("VRX") an P1 + Y ("VRY") an  P2 (und jeweils GND an - und +5v an + auf der rechten Pin-Bank!)
+Joystick-Taster ("SW"=Switch) an P8
+Record-Button an P5 und GND (ist parallel zu Button "A" auf dem Motherboard zu nutzen)
+Play-Button an P11 und GND (ist parallel zu Button "B" auf dem Motherboard zu nutzen)
 Servoausgänge - gehen auf:
 Schnabel au/zu-Servo an P3 (Wert von P0), an GND und +5V
 Schwenken-Servo an P4 (Wert von P1), an GND und +5V
@@ -17,8 +17,12 @@ Picken: Digital-output an P16, ggfs. mit einem 3v3-toleranten Relais an den Hubm
 
  */
 
-const SERVO_MIN = 500
-const SERVO_MAX = 2500
+const SERVO0_MIN = 2500
+const SERVO0_MAX = 500
+const SERVO1_MIN = 500
+const SERVO1_MAX = 2500
+const SERVO2_MIN = 500
+const SERVO2_MAX = 2500
 const SAMPLE_FREQUENCY = 0.05 // in seconds
 
 let isSampling = false
@@ -56,7 +60,7 @@ input.onButtonPressed(Button.A, function () {
     if (isSampling) {
         samples = []
         basic.showIcon(IconNames.SmallDiamond)
-                music.playTone(Note.C, music.beat(BeatFraction.Half))
+        music.playTone(Note.C, music.beat(BeatFraction.Half))
 
         music.playTone(Note.E, music.beat(BeatFraction.Quarter))
 
@@ -138,12 +142,12 @@ basic.forever(function () {
         showBars(current)
     } else {
         led.enable(false)
-        pins.servoSetPulse(AnalogPin.P3, Math.map(current[0], 0, 1023, SERVO_MIN, SERVO_MAX))
-        pins.servoSetPulse(AnalogPin.P4, Math.map(current[1], 0, 1023, SERVO_MIN, SERVO_MAX))
-        pins.servoSetPulse(AnalogPin.P10, Math.map(current[2], 0, 1023, SERVO_MIN, SERVO_MAX))
+        pins.servoSetPulse(AnalogPin.P3, Math.map(current[0], 0, 1023, SERVO0_MIN, SERVO0_MAX))
+        pins.servoSetPulse(AnalogPin.P4, Math.map(current[1], 0, 1023, SERVO1_MIN, SERVO1_MAX))
+        pins.servoSetPulse(AnalogPin.P10, Math.map(current[2], 0, 1023, SERVO2_MIN, SERVO2_MAX))
         pins.digitalWritePin(DigitalPin.P16, current[3] > 0 ? 1 : 0)
     }
 
     serial.writeLine((isReplaying ? "PLAY: " : isSampling ? "REC: " : "Live: ") + current.join(", "))
-    basic.pause(SAMPLE_FREQUENCY*1000) // Adjust sample frequency as needed
+    basic.pause(SAMPLE_FREQUENCY * 1000) // Adjust sample frequency as needed
 })

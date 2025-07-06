@@ -28,10 +28,10 @@ bluetooth.onUartDataReceived(serial.delimiters(Delimiters.NewLine), function () 
         basic.clearScreen()
         for (let x = 0; x < parts.length; x++) {
             let v = parseFloat(parts[x])
-            // Write to servo pins P0–P5 if x <= 5
+            // Write to servo pins P3, P4, P10 if x <= 5
             if (x <= 5) {
                 let angle = Math.round(Math.map(v, 0, 1, 0, 180))
-                let pin = [AnalogPin.P0, AnalogPin.P1, AnalogPin.P2, AnalogPin.P3, AnalogPin.P4, AnalogPin.P5][x]
+                let pin = [AnalogPin.P3, AnalogPin.P4, AnalogPin.P10, AnalogPin.P3, AnalogPin.P4, AnalogPin.P5][x]
                 pins.servoWritePin(pin, angle)
             }
             if (v >= 0) {
