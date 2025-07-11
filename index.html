@@ -21,7 +21,7 @@
           href="https://github.com/your-repo/ScanToy/releases/latest">ScanToy Firmware</a></p>
       <p>Die MIDI-Ausgabe kann aktiviert werden, um die gescannten Werte als MIDI-Noten zu senden.</p>
       <p>Die Konfiguration wird im Browser gespeichert, so dass sie beim nächsten Besuch automatisch geladen wird.</p>
-      <p> V. 1.1 250702 Max Wolf / MESO Digital Interiors </p>
+      <p> V. 1.2 250711 Max Wolf / MESO Digital Interiors </p>
     </div>
     <select id="cameraSelect" style="width:100%; margin-bottom: 1em;"></select>
     <button id="startOk">Los geht's</button>
@@ -40,17 +40,33 @@
   <button id="btnConfig">⚙️</button>
 
   <!-- Konfig-Dialog -->
+
   <dialog id="configDialog">
-    <h2>Farben konfigurieren</h2>
+    <h2>Micro:Bit verbinden</h2>
+    <div style="margin: 1em 0;">
+  <button type="button" onclick="connectBluetooth()">🔗 Bluetooth verbinden</button>
+  <button type="button" onclick="sendTestP()">💓 Test BT</button>
+</div>
+<br/>
+<h2>Farben konfigurieren</h2>
     <form id="configForm">
       <label>Filter-Fenstergröße:
         <input type="number" id="filterSize" min="1" value="5"> Frames
       </label>
-      <br>
+      <br/>
+     
       <label><input type="checkbox" id="midiToggle"> MIDI-Ausgabe aktivieren</label>
       <label><input type="checkbox" id="soundToggle"> MIDI-Töne über Lautsprecher abspielen</label>
+     
       <div id="colorList"></div>
       <button type="button" id="addColor">+ Farbe hinzufügen</button>
+
+      <br/>
+     <h2>Sound</h2>
+
+      <label><input type="checkbox" id="midiToggle"> MIDI-Ausgabe aktivieren</label>
+      <label><input type="checkbox" id="soundToggle"> MIDI-Töne über Lautsprecher abspielen</label>
+      <br/>
       <div class="actions">
         <button type="submit">Speichern</button>
         <button type="button" id="closeConfig">Abbrechen</button>
@@ -58,8 +74,7 @@
     </form>
   </dialog>
 
-  <button onclick="connectBluetooth()" style="position:absolute;top:10px;left:10px;z-index:10;">🔗 Bluetooth</button>
-  <button onclick="sendTestP()" style="position:absolute;top:50px;left:10px;z-index:10;">▶ Send "P"</button>
+  <button id="btConnect"onclick="connectBluetooth()" style="position:absolute;top:10px;left:10px;z-index:10;">🔗 Bluetooth nicht verbunden. Click hier um Deinen MicroBit zu suchen.</button>
 
   <script>
     let isPickingColor = false;
@@ -142,6 +157,7 @@
           );
 
           console.log("Bluetooth connected and characteristic ready.");
+          document.getElementById("btConnect").style.display = "none";
 
           // RX Characteristic for incoming data
           rxChar = await service.getCharacteristic(
