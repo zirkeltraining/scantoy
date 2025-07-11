@@ -1,5 +1,6 @@
 // bluetooth gateway to radio - test
 // for the bbc microbit v2. probably won't on v1
+// 250711 V. 0.1 max.wolf@meso.design
 
 // what it does: 
 // provides bluetooth connection
@@ -8,7 +9,7 @@
 // listens to incoming values and writes them to the servo pins P0-P4 + P10
 // note that the display will look weird when using more than 3 servo pins because the micro:bit shares the display pins with the servo pins
 //
-// Project settings: activate JustWorks Pairing
+// before uploading via https://makecode.microbit.org/#editor , in Project Settings: activate JustWorks Pairing
 
 bluetooth.onBluetoothConnected(function () {
     basic.showIcon(IconNames.Yes)
