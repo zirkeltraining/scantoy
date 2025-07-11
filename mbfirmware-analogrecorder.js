@@ -19,10 +19,10 @@ Picken: Digital-output an P16, ggfs. mit einem 3v3-toleranten Relais an den Hubm
 
 const SERVO0_MIN = 2500
 const SERVO0_MAX = 500
-const SERVO1_MIN = 500
-const SERVO1_MAX = 2500
-const SERVO2_MIN = 500
-const SERVO2_MAX = 2500
+const SERVO1_MIN = 2500
+const SERVO1_MAX = 500
+const SERVO2_MIN = 2500
+const SERVO2_MAX = 500
 const SAMPLE_FREQUENCY = 0.05 // in seconds
 
 let isSampling = false

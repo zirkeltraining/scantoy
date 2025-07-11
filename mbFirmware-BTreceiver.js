@@ -5,8 +5,10 @@
 // provides bluetooth connection
 // listens for button A and B presses or Shake and relays them back via BT
 // listens for string "P" and shows a heart icon
-// listens to incoming values and writes them to the servo pins P0-P5
-
+// listens to incoming values and writes them to the servo pins P0-P4 + P10
+// note that the display will look weird when using more than 3 servo pins because the micro:bit shares the display pins with the servo pins
+//
+// Project settings: activate JustWorks Pairing
 
 bluetooth.onBluetoothConnected(function () {
     basic.showIcon(IconNames.Yes)
@@ -28,10 +30,11 @@ bluetooth.onUartDataReceived(serial.delimiters(Delimiters.NewLine), function () 
         basic.clearScreen()
         for (let x = 0; x < parts.length; x++) {
             let v = parseFloat(parts[x])
-            // Write to servo pins P3, P4, P10 if x <= 5
-            if (x <= 5) {
+            // Write to servo pins P0,P1,P2,P3, P4, P10 if x <= 6
+            // theoretical maximum of analog output pins 
+            if (x <= 6) {
                 let angle = Math.round(Math.map(v, 0, 1, 0, 180))
-                let pin = [AnalogPin.P3, AnalogPin.P4, AnalogPin.P10, AnalogPin.P3, AnalogPin.P4, AnalogPin.P5][x]
+                let pin = [AnalogPin.P0, AnalogPin.P1, AnalogPin.P2, AnalogPin.P3, AnalogPin.P4, AnalogPin.P10][x]
                 pins.servoWritePin(pin, angle)
             }
             if (v >= 0) {
@@ -42,6 +45,7 @@ bluetooth.onUartDataReceived(serial.delimiters(Delimiters.NewLine), function () 
             }
         }
     }
+
 })
 input.onButtonPressed(Button.B, function () {
     bluetooth.uartWriteString("B")
@@ -49,6 +53,7 @@ input.onButtonPressed(Button.B, function () {
 input.onGesture(Gesture.Shake, function () {
     bluetooth.uartWriteString("S")
 })
+
 let receivedString = ""
 bluetooth.startUartService()
 basic.showIcon(IconNames.Square)

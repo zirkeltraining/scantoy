@@ -107,6 +107,12 @@
       let bluetoothCharacteristic = null;
       let rxChar = null;
 
+      // Bluetooth write queue and throttling
+      const btWriteQueue = [];
+      let btWriteInProgress = false;
+      let lastBluetoothSend = 0;
+      let bluetoothSendInterval = 100; // ms, also max 10x pro Sekunde
+
 
       // An implementation of Nordic Semicondutor's UART/Serial Port Emulation over Bluetooth low energy
       const UART_SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
@@ -348,6 +354,26 @@
         osc.start();
         osc.stop(audioCtx.currentTime + duration);
       }
+      // Bluetooth write queue helpers
+      function queueBluetoothWrite(data) {
+        btWriteQueue.push(data);
+        processBluetoothQueue();
+      }
+
+      async function processBluetoothQueue() {
+        if (btWriteInProgress || btWriteQueue.length === 0 || !rxChar) return;
+
+        btWriteInProgress = true;
+        const next = btWriteQueue.shift();
+        try {
+          await rxChar.writeValue(new TextEncoder().encode(next));
+        } catch (err) {
+          console.warn("Bluetooth write failed:", err);
+        }
+        btWriteInProgress = false;
+        if (btWriteQueue.length > 0) processBluetoothQueue();
+      }
+
       // Scan loop
       function scanFrame() {
         if (video.readyState !== video.HAVE_ENOUGH_DATA) {
@@ -499,8 +525,11 @@
         // Bluetooth output (only if connected)
         if (bluetoothCharacteristic && rxChar) {
           const line = values.join(',') + '\n';
-          const encoder = new TextEncoder();
-          rxChar.writeValue(encoder.encode(line));
+          const now = Date.now();
+          if (now - lastBluetoothSend >= bluetoothSendInterval) {
+            queueBluetoothWrite(line);
+            lastBluetoothSend = now;
+          }
         }
 
         // Schedule next frame
