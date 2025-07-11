@@ -9,6 +9,9 @@ a firmware to connect 3 servos, a solenoid, a joystick, a few buttons and a fade
 
 
 ## index.html + mbFirmware-BTReceiver.js
+Works on Chrome (Android + MacOS)
+Does not work on Fully Kiosk (Android) due to BT restrictions (?)
+Works with Fully Single App Kiosk + Chrome App (Android)
 
  a simple webpage that
  * displays the webcam in a large window
